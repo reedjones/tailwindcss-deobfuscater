@@ -1,7 +1,20 @@
 from cssutils import parseString
 import requests
 import re
+import typer
+from typing_extensions import Annotated
+import contextlib
 
+app = typer.Typer()
+
+
+@app.command()
+def main(obsfuscated_url: Annotated[str, typer.Argument(help="Url of the obsfuscated css")], 
+         normal_url: Annotated[str, typer.Argument(help="Url containing normal (non-obsfuscated) tailwindcss")]):
+    obs = fetch_remote_css(obsfuscated_url)
+    org = fetch_remote_css(normal_url)
+    deobfuscate_css(obs, org)
+    
 
 
 target_url = "<some obsfucated css file>"
@@ -58,12 +71,12 @@ def test_extract_tailwind_verison():
 
 # Build mapping between obfuscated and valid class names
 def deobfuscate_css(obfuscated_css, original_css):
-    original_parser = parseString(original_css)
-    original_rules = original_parser.cssRules
-
-    # Parse obfuscated stylesheet
-    obfuscated_parser = parseString(obfuscated_css)
-    obfuscated_rules = obfuscated_parser.cssRules
+    with contextlib.redirect_stdout(None):
+        original_parser = parseString(original_css)
+        original_rules = original_parser.cssRules
+        # Parse obfuscated stylesheet
+        obfuscated_parser = parseString(obfuscated_css)
+        obfuscated_rules = obfuscated_parser.cssRules
     mapping = {}
     classes = {}
     matched_classes = set()  # Set to keep track of already matched obfuscated class names
@@ -120,6 +133,13 @@ def test_deobsfuscate_live():
     obs = fetch_remote_css(target_url)
     org = fetch_remote_css(original_sample)
     deobfuscate_css(obs, org)
+
+
+
+def replace_obfuscated_classes(obfuscated_css, mapping):
+    for obfuscated_class, original_class in mapping.items():
+        obfuscated_css = re.sub(fr'\.{obfuscated_class}', f'.{original_class}', obfuscated_css)
+    return obfuscated_css
 
 if __name__ == '__main__':
     # test_extract_tailwind_verison()
