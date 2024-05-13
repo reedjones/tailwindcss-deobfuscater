@@ -65,25 +65,41 @@ def deobfuscate_css(obfuscated_css, original_css):
     obfuscated_parser = parseString(obfuscated_css)
     obfuscated_rules = obfuscated_parser.cssRules
     mapping = {}
+    classes = {}
+    matched_classes = set()  # Set to keep track of already matched obfuscated class names
     matches = 0 
+    total_classes = len(obfuscated_rules)  # Total number of obfuscated classes
+    print("DEOBSFUCATOR")
+    print("Classes:", total_classes)
+    print("Matches:", matches)
+    print("Done: 0%", end=" ")
     for obfuscated_rule in obfuscated_rules:
-        print(f"Found {matches} matches")
         if obfuscated_rule.type == obfuscated_rule.STYLE_RULE:
             obfuscated_class = obfuscated_rule.selectorText.strip('.')
             obfuscated_style = obfuscated_rule.style.cssText
-            for original_rule in original_rules:
-                print(f"testing {original_rule}")
-
-                if original_rule.type == original_rule.STYLE_RULE:
-                    original_class = original_rule.selectorText.strip('.')
-                    original_style = original_rule.style.cssText
-                    if obfuscated_style == original_style:
-                        matches += 1 
-                        print(f"match {matches}")
-                        mapping[obfuscated_class] = original_class
-                        break
-
-    print(mapping)
+            if obfuscated_class not in classes:
+                classes[obfuscated_class] = {
+                    "match": None,
+                    "css": obfuscated_style
+                }
+            if obfuscated_class not in matched_classes:  # Check if the class has not been matched already
+                for original_rule in original_rules:
+                    if original_rule.type == original_rule.STYLE_RULE:
+                        original_class = original_rule.selectorText.strip('.')
+                        original_style = original_rule.style.cssText
+                        if obfuscated_style == original_style:
+                            matches += 1 
+                            classes[obfuscated_class]['match'] = original_class
+                            mapping[obfuscated_class] = original_class
+                            matched_classes.add(obfuscated_class)  # Add the matched class to the set
+                            break
+        # Update progress bar
+        progress = int((len(matched_classes) / total_classes) * 100)
+        progress_bar = '-' * progress + '>' + '-' * (100 - progress)
+        print(f"\rDone: {progress}% [{progress_bar}]", end="")
+    
+    print("\nDeobfuscation completed!")
+    return mapping, classes
 
 
 def test_deobsfuscate_simple():
